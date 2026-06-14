@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohm's Law Interactive Simulator</title>
+    <style>
+        :root {
+            /* Matched colors from the provided image */
+            --bg-color: #7b99c2;          /* The soft blue background */
+            --card-bg: #ffffff;           /* The crisp white banner color */
+            --text-main: #000000;         /* Bold black text for primary labels */
+            --text-muted: #4b5a75;        /* Subdued slate blue for secondary text */
+            
+            /* Circuit matching accents */
+            --voltage-color: #3b5087;     /* Deep plug/battery blue */
+            --current-color: #f7ca45;     /* Vibrant yellow from the sub-banner and bulb glow */
+            --resistance-color: #d1563b;  /* Contrasting terracotta/red for restriction */
+            --panel-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Control Panel */
+        .control-panel {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-right: 1px solid var(--panel-border);
+            background-color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--panel-border);
+            }
+        }
+
+        .formula-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+
+        .formula-display span {
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .v-text { color: var(--voltage-color); }
+        .i-text { color: var(--current-color); text-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .r-text { color: var(--resistance-color); }
+
+        .slider-group {
+            margin-bottom: 30px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider-wrapper span {
+            font-family: monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 70px;
+            text-align: right;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #cbd5e1;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+            border: 2px solid #fff;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        #voltage::-webkit-slider-thumb { background: var(--voltage-color); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        #resistance::-webkit-slider-thumb { background: var(--resistance-color); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+
+        .math-box {
+            background-color: var(--current-color);
+            color: #000000;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 20px;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15);
+        }
+
+        .math-line {
+            margin-bottom: 8px;
+        }
+        .math-line:last-child {
+            margin-bottom: 0;
+            font-weight: bold;
+            border-top: 1px solid rgba(0, 0, 0, 0.15);
+            padding-top: 8px;
+            color: #000000;
+        }
+
+        /* Right Animation Panel */
+        .visualization-panel {
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            aspect-ratio: 1;
+        }
+
+        .live-stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ffffff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="control-panel">
+            <div>
+                <div class="formula-display">
+                    <span class="v-text" id="formula-v">V</span> = 
+                    <span class="i-text" id="formula-i">I</span> × 
+                    <span class="r-text" id="formula-r">R</span>
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span class="v-text">Voltage (V_s)</span>
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Pressure / Force</span>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="voltage" min="1.0" max="12.0" step="0.1" value="7.0">
+                        <span id="v-val" class="v-text">7.0 V</span>
+                    </div>
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span class="r-text">Resistance (R)</span>
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">Pipe Restriction</span>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="resistance" min="1.0" max="10.0" step="0.1" value="6.0">
+                        <span id="r-val" class="r-text">6.0 Ω</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-box">
+                <div class="math-line">I = V_s / R</div>
+                <div class="math-line">I = <span id="math-v">7.0</span>V / <span id="math-r">6.0</span>Ω</div>
+                <div class="math-line">Current (I) = <span id="math-i">1.17</span> A</div>
+            </div>
+        </div>
+
+        <div class="visualization-panel">
+            <div class="live-stats">
+                Flow Rate: <span id="flow-stat" style="color: var(--voltage-color)">1.17</span> A
+            </div>
+            <canvas id="circuitCanvas" width="500" height="500"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const vSlider = document.getElementById('voltage');
+        const rSlider = document.getElementById('resistance');
+        
+        const vVal = document.getElementById('v-val');
+        const rVal = document.getElementById('r-val');
+        
+        const mathV = document.getElementById('math-v');
+        const mathR = document.getElementById('math-r');
+        const mathI = document.getElementById('math-i');
+        const flowStat = document.getElementById('flow-stat');
+
+        const formulaV = document.getElementById('formula-v');
+        const formulaI = document.getElementById('formula-i');
+        const formulaR = document.getElementById('formula-r');
+
+        const canvas = document.getElementById('circuitCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Particle simulation parameters
+        let particles = [];
+        const maxParticles = 60;
+
+        // Populate initial particle layout spread out inside the loop wire path
+        for(let i=0; i < maxParticles; i++) {
+            particles.push({
+                progress: Math.random() // distance along the rectangular track loop (0 to 1)
+            });
+        }
+
+        function updateData() {
+            const v = parseFloat(vSlider.value);
+            const r = parseFloat(rSlider.value);
+            const i = v / r;
+
+            // Update UI text fields
+            vVal.textContent = v.toFixed(1) + ' V';
+            rVal.textContent = r.toFixed(1) + ' Ω';
+            mathV.textContent = v.toFixed(1);
+            mathR.textContent = r.toFixed(1);
+            mathI.textContent = i.toFixed(2);
+            flowStat.textContent = i.toFixed(2);
+
+            // Dynamically scale letter weights/sizes in structural formula display
+            formulaV.style.transform = `scale(${0.7 + (v/12)*0.6})`;
+            formulaR.style.transform = `scale(${0.7 + (r/10)*0.6})`;
+            formulaI.style.transform = `scale(${0.7 + (i/12)*0.6})`;
+
+            return { v, r, i };
+        }
+
+        // Computes coordinates following a uniform bounding box loop track 
+        function getCircuitPoint(progress, resWidth) {
+            // Track path setup coordinates
+            const x1 = 80, x2 = 420;
+            const y1 = 120, y2 = 400;
+            
+            const topW = x2 - x1;
+            const rightH = y2 - y1;
+            const botW = x2 - x1;
+            const leftH = y2 - y1;
+            const totalLen = topW + rightH + botW + leftH;
+
+            let curLen = progress * totalLen;
+
+            // Top segment running left to right (Contains the constriction component)
+            if (curLen <= topW) {
+                let x = x1 + curLen;
+                let y = y1;
+                // If sliding inside the physical resistor area (centered at top)
+                if (x > 200 && x < 300) {
+                    // Compress particles toward the vertical center node line inside constriction
+                    let t = (x - 200) / 100; // 0 to 1 inside resistor
+                    let maxConstriction = (1 - (resWidth / 40)) * 14; 
+                    let offsetFactor = Math.sin(t * Math.PI); 
+                    y += (Math.random() - 0.5) * (18 - maxConstriction * offsetFactor);
+                } else {
+                    y += (Math.random() - 0.5) * 12;
+                }
+                return { x, y };
+            }
+            curLen -= topW;
+
+            // Right segment running top to bottom
+            if (curLen <= rightH) {
+                return { x: x2 + (Math.random() - 0.5) * 12, y: y1 + curLen };
+            }
+            curLen -= rightH;
+
+            // Bottom segment running right to left
+            if (curLen <= botW) {
+                return { x: x2 - curLen + (Math.random() - 0.5) * 12, y: y2 };
+            }
+            curLen -= botW;
+
+            // Left segment running bottom to top (Through the Power Source element)
+            return { x: x1 + (Math.random() - 0.5) * 12, y: y2 - curLen };
+        }
+
+        function drawLoop() {
+            const { v, r, i } = updateData();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Coordinates matching geometric structural dimensions 
+            const x1 = 80, x2 = 420;
+            const y1 = 120, y2 = 400;
+            
+            // Render basic connection circuit skeleton wires underneath
+            ctx.lineWidth = 24;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(200, y1);
+            ctx.moveTo(300, y1);
+            ctx.lineTo(x2, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x1, y2);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+
+            // Dynamic core calculations for width constriction visualization
+            // Base pipe thickness inside the constriction zone goes from 32px (low R) down to 6px (high R)
+            const minPipeWidth = 6;
+            const maxPipeWidth = 32;
+            const resWidth = maxPipeWidth - ((r - 1) / 9) * (maxPipeWidth - minPipeWidth);
+
+            // --- DRAW WATER RESISTOR / CONSTRICTED PIPE ---
+            ctx.fillStyle = '#4b5a75';
+            ctx.fillRect(190, y1 - 24, 120, 48); // outer block housing shell
+
+            // Drawn cut-out dynamic path channel inner geometry
+            ctx.fillStyle = '#f0f4f8';
+            ctx.beginPath();
+            ctx.moveTo(190, y1 - 12);
+            ctx.bezierCurveTo(220, y1 - 12, 220, y1 - resWidth/2, 250, y1 - resWidth/2);
+            ctx.bezierCurveTo(280, y1 - resWidth/2, 280, y1 - 12, 310, y1 - 12);
+            ctx.lineTo(310, y1 + 12);
+            ctx.bezierCurveTo(280, y1 + 12, 280, y1 + resWidth/2, 250, y1 + resWidth/2);
+            ctx.bezierCurveTo(220, y1 + resWidth/2, 220, y1 + 12, 190, y1 + 12);
+            ctx.closePath();
+            ctx.fill();
+
+            // Resistor outline accent highlight tags (FIXED: replaced broken var() string with solid hex value)
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#d1563b';
+            ctx.stroke();
+
+            // --- DRAW VOLTAGE POWER SOURCE (BATTERY PUMP) ---
+            // Scaled based on structural voltage magnitude dimensions
+            const baseBatH = 60;
+            const batHeight = baseBatH + (v / 12) * 60; 
+            const batY = (y1 + y2)/2 - batHeight/2;
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x1 - 25, batY, 50, batHeight);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#3b5087';
+            ctx.strokeRect(x1 - 25, batY, 50, batHeight);
+            
+            // Battery positive contact terminal nipple caps
+            ctx.fillStyle = '#3b5087';
+            ctx.fillRect(x1 - 10, batY - 8, 20, 8);
+
+            // Plus & Minus operational polarity iconography labeling
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('+', x1, batY + 22);
+            ctx.fillText('-', x1, batY + batHeight - 10);
+
+            // --- ANIMATE AND RENDER VALENCY ELECTRON WATER CHARGE PARTICLES ---
+            // Velocity speeds scale monotonically up based linearly on calculated Amperage values
+            const speedMultiplier = 0.0025 * i; 
+
+            for(let p of particles) {
+                p.progress += speedMultiplier;
+                if(p.progress > 1) p.progress -= 1; // loop wrapping loop function
+
+                let pt = getCircuitPoint(p.progress, resWidth);
+
+                ctx.fillStyle = '#f7ca45';
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // --- FLOW DIRECTION METRICS LABEL ARROWS ---
+            ctx.fillStyle = '#3b5087';
+            ctx.font = 'bold 15px sans-serif';
+            ctx.fillText(`I = ${i.toFixed(2)} A`, 250, y1 - 35);
+            ctx.font = '14px sans-serif';
+            ctx.fillText(`➡`, 295, y1 - 33);
+
+            requestAnimationFrame(drawLoop);
+        }
+
+        // Hook interactive sliding controller variables to render loops
+        vSlider.addEventListener('input', updateData);
+        rSlider.addEventListener('input', updateData);
+
+        // Bootstrap operational init cycles
+        updateData();
+        drawLoop();
+    </script>
+</body>
+</html>
